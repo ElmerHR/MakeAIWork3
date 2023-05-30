@@ -1,2 +1,4 @@
 **/*.pyc
 **/pics/2750/
+**/apple_disease_classification/
+**/.DS_Store
