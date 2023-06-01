@@ -2,3 +2,9 @@
 **/pics/2750/
 **/apple_disease_classification/
 **/.DS_Store
+**/*:Zone.Identifier
+project_3/yolo3/model.h5
+project_3/yolo3/sam_vit_b_01ec64.pth
+project_3/yolo3/sam_vit_h_4b8939.pth
+project_3/yolo3/sam_vit_l_0b3195.pth
+project_3/yolo3/yolov3.weights
