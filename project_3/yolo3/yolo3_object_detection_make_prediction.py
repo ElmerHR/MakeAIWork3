@@ -229,17 +229,19 @@ for path in paths:
 				print(v_boxes[i].xmin, v_boxes[i].xmax, v_boxes[i].ymin, v_boxes[i].ymax)
 			
 			
-
+			# if bouding box found, append to csv_list
 			if v_boxes:
 				idx = np.argmax(v_scores)
 				to_csv.append([str(filename), v_labels[idx], v_scores[idx], v_boxes[0].xmin, v_boxes[0].ymin,
 							v_boxes[0].xmax, v_boxes[0].ymax])
+			# otherwise save only filename
 			else:
 				to_csv.append([str(filename), None, None, None, None, None, None])
 
 			# draw what we found
 			draw_boxes(path, filename, v_boxes, v_labels, v_scores)
 
+# save list to csv file
 with open("bounding_boxes.csv", "w", newline="") as f:
     writer = csv.writer(f)
     writer.writerows(to_csv)
