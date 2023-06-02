@@ -10,3 +10,4 @@ project_3/yolo3/sam_vit_l_0b3195.pth
 project_3/yolo3/yolov3.weights
 **/bb_david/
 **/renamed_files
+**/segmented_files
