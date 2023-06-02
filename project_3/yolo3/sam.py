@@ -48,12 +48,12 @@ sam.to(device=device)
 predictor = SamPredictor(sam)
 
 # path to xml and image files
-path_train = 'renamed_files\\train'
-path_test = 'renamed_files\\test'
+path_train = 'renamed_files/train'
+path_test = 'renamed_files/test'
 
 # path to save segmented images to
-segmented_path_train = 'segmented_files\\train'
-segmented_path_test = 'segmented_files\\test'
+segmented_path_train = 'segmented_files/train'
+segmented_path_test = 'segmented_files/test'
 
 # list of paths to iterate over
 paths = [path_train, path_test]
