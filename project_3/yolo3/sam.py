@@ -28,6 +28,10 @@ def show_box(box, ax):
     w, h = box[2] - box[0], box[3] - box[1]
     ax.add_patch(plt.Rectangle((x0, y0), w, h, edgecolor='green', facecolor=(0,0,0,0), lw=2))
 
+def crop(image):
+    y_nonzero, x_nonzero, _ = np.nonzero(image)
+    return image[np.min(y_nonzero):np.max(y_nonzero), np.min(x_nonzero):np.max(x_nonzero)]
+
 # set checkpoint and model type
 sam_checkpoint = "sam_vit_h_4b8939.pth"
 # sam_checkpoint = "sam_vit_b_01ec64.pth"
@@ -44,12 +48,12 @@ sam.to(device=device)
 predictor = SamPredictor(sam)
 
 # path to xml and image files
-path_train = '/home/elmer/dev_debian/working/python3/MakeAIWork3/project_3/yolo3/renamed_files/train'
-path_test = '/home/elmer/dev_debian/working/python3/MakeAIWork3/project_3/yolo3/renamed_files/test'
+path_train = 'renamed_files\\train'
+path_test = 'renamed_files\\test'
 
 # path to save segmented images to
-segmented_path_train = '/home/elmer/dev_debian/working/python3/MakeAIWork3/project_3/yolo3/segmented_files/train'
-segmented_path_test = '/home/elmer/dev_debian/working/python3/MakeAIWork3/project_3/yolo3/segmented_files/test'
+segmented_path_train = 'segmented_files\\train'
+segmented_path_test = 'segmented_files\\test'
 
 # list of paths to iterate over
 paths = [path_train, path_test]
@@ -57,7 +61,7 @@ segmented_paths = [segmented_path_train, segmented_path_test]
 
 # iterate over xml files
 for i, path in enumerate(paths):
-    for filename in os.listdir(path)[:5]:
+    for filename in os.listdir(path):
         if os.path.splitext(filename)[-1] == '.xml':
             tree = ET.parse(os.path.join(path, filename))
             root = tree.getroot()
@@ -77,7 +81,7 @@ for i, path in enumerate(paths):
             coordinates = [xmin,ymin,xmax,ymax]
 
             # change from BGR to RGB
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             
             # set image for predictor
             predictor.set_image(image)
@@ -121,11 +125,34 @@ for i, path in enumerate(paths):
             # print(type(mask))
             #  Bitwise-AND mask and original image --> this will only save the underlying image where the mask is
             result = cv2.bitwise_and(image,image, mask= mask)
-            # create figure and save to file
-            plt.figure(figsize=(10, 10))
-            plt.imshow(result)
-            plt.axis('off')
-            # plt.show()
-            plt.savefig(os.path.join(segmented_paths[i], image_filename))
-            plt.close()
 
+            # print(result.shape)
+
+            img_crop = crop(result)
+            # print(img_crop.shape)
+
+            # get old size shape
+            old_size = img_crop.shape[:2] # old_size is in (height, width) format
+
+            # find longest edge
+            max_size = max(old_size)
+           
+            # calculate delta between max_size and old size edge
+            delta_w = max_size - old_size[1]
+            delta_h = max_size - old_size[0]
+
+            # calculate image placement
+            top, bottom = delta_h//2, delta_h-(delta_h//2)
+            left, right = delta_w//2, delta_w-(delta_w//2)
+            
+            # place border around image in color black
+            color = [0, 0, 0]
+            img_crop_sq = cv2.copyMakeBorder(img_crop, top, bottom, left, right, cv2.BORDER_CONSTANT,
+                value=color)
+
+            # cv2.imshow("image", img_crop_sq)
+            # cv2.waitKey(0)
+            # cv2.destroyAllWindows()
+
+            # save image to file
+            cv2.imwrite(os.path.join(segmented_paths[i], image_filename), img_crop_sq)
