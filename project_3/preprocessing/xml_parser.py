@@ -1,8 +1,8 @@
 import os
 import xml.etree.ElementTree as ET
 
-path_train = '/home/elmer/dev_debian/working/python3/MakeAIWork3/project_3/yolo3/renamed_files/train'
-path_test = '/home/elmer/dev_debian/working/python3/MakeAIWork3/project_3/yolo3/renamed_files/test'
+path_train = '/home/elmer/dev_debian/working/python3/MakeAIWork3/project_3/preprocessing/renamed_files/train'
+path_test = '/home/elmer/dev_debian/working/python3/MakeAIWork3/project_3/preprocessing/renamed_files/test'
 
 paths = [path_train, path_test]
 
