@@ -99,7 +99,7 @@ class Resnet18Model:
         train_losses = []
         test_losses = []
         test_accuracy = []
-        epochs = 1
+        epochs = 10
 
         for epoch in range(epochs):  # loop over the dataset multiple times
 

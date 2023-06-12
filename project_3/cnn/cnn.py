@@ -33,6 +33,8 @@ class CustomImageDataset(Dataset):
     def __getitem__(self, idx):
         img_path = os.path.join(self.img_dir, self.img_labels.iloc[idx, 0])
         image = read_image(img_path).float()
+        # removing alpha channel from image (4th channel)
+        image = image[:3, :, :]
         label = self.img_labels.iloc[idx, 1]
         if self.transform:
             image = self.transform(image)
@@ -135,10 +137,10 @@ class CNNModel:
 
         transform = transforms.Compose(
             [
-                transforms.Resize(128)
+                transforms.Resize((128, 128))
             ])
 
-        trainset = CustomImageDataset('preprocessing/annotations_train.csv', 'preprocessing', transform=transform)
+        trainset = CustomImageDataset('preprocessing/annotations_train.csv', '', transform=transform)
         trainloader = DataLoader(trainset, batch_size=self.batch_size,
                                                 shuffle=True, num_workers=0)
         mean, std = get_mean_and_std(trainloader)
@@ -146,15 +148,15 @@ class CNNModel:
 
         transform = transforms.Compose(
             [
-                transforms.Resize(128),
+                transforms.Resize((128, 128)),
                 transforms.Normalize(mean, std)
             ])
 
-        trainset = CustomImageDataset('preprocessing/annotations_train.csv', 'preprocessing', transform)
+        trainset = CustomImageDataset('preprocessing/annotations_train.csv', '', transform)
         self.trainloader = DataLoader(trainset, batch_size=self.batch_size,
                                                 shuffle=True)
 
-        testset = CustomImageDataset('preprocessing/annotations_test.csv', 'preprocessing', transform)
+        testset = CustomImageDataset('preprocessing/annotations_test.csv', '', transform)
         self.testloader = DataLoader(testset, batch_size=self.batch_size,
                                                 shuffle=False)
         print(get_mean_and_std(trainloader))
@@ -208,7 +210,7 @@ class CNNModel:
         train_losses = []
         test_losses = []
         test_accuracy = []
-        epochs = 1
+        epochs = 10
         for epoch in range(epochs):  # loop over the dataset multiple times
 
             running_loss = 0.0

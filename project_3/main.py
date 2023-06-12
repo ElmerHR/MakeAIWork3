@@ -1,5 +1,6 @@
 # Import the library
 import argparse
+import torch
 
 from preprocessing.sam import Segmentation
 from preprocessing.augmentation import Augmentation
@@ -52,22 +53,38 @@ def main():
         resnet18_model.train()
         print('Testing Resnet18 model...')
         resnet18_model.test()
-
-    if args.aql and (args.train_cnn or args.train_resnet18):
-        print('Aql after training network')
-    elif args.aql:
-        while True:
-            model = input("Which trained model do you want to use for making predictions? [cnn or resnet18]: ")
-
-            if model == 'cnn':
-                print("AQL with cnn")
-                break
-            elif model == 'resnet18':
-                print("AQL with resnet18")
-                break
+    
+    if args.aql:
+        predictor = None
+        cnn_model_params_path = 'cnn/cnn_best_model_params.pt'
+        resnet18_model_params_path = 'cnn/resnet18_best_model_params.pt'
+        if args.aql and (args.train_cnn or args.train_resnet18):
+            print('Aql after training network')
+            if args.train_cnn:
+                predictor = CNNModel().net.load_state_dict(torch.load(cnn_model_params_path))
             else:
-                continue
+                predictor = Resnet18Model().model_ft.load_state_dict(torch.load(resnet18_model_params_path))
+            
+        else:
+            while True:
+                model = input("Which trained model do you want to use for making predictions? [cnn or resnet18]: ")
 
+                if model == 'cnn':
+                    print("AQL with cnn")
+                    predictor = CNNModel().net.load_state_dict(torch.load(cnn_model_params_path))
+                    break
+                elif model == 'resnet18':
+                    print("AQL with resnet18")
+                    predictor = Resnet18Model().model_ft.load_state_dict(torch.load(resnet18_model_params_path))
+                    break
+                else:
+                    continue
+
+        predictor.eval()
+        # don't calculate gradients
+        with torch.no_grad():
+            images = None
+            outputs = predictor(images)
 
 if __name__ == "__main__":
     main()

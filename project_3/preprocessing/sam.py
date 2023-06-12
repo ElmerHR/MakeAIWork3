@@ -75,7 +75,7 @@ class Segmentation:
 
         # iterate over xml files
         for i, path in enumerate(paths):
-            for filename in os.listdir(path)[:2]:
+            for filename in os.listdir(path):
                 if os.path.splitext(filename)[-1] == '.xml':
                     tree = ET.parse(os.path.join(path, filename))
                     root = tree.getroot()

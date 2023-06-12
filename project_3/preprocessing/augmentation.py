@@ -25,7 +25,7 @@ class Augmentation:
         print("Augmenting images (Salt & Pepper noise, Gaussian nose, Lighten,\nDarken and horizontal flip)...")
         # iterate over all files
         for i, path in enumerate(paths):
-            for filename in tqdm(os.listdir(path)[:5]):
+            for filename in tqdm(os.listdir(path)):
                 if os.path.splitext(filename)[-1] == '.jpg':
                     img = cv2.imread(os.path.join(path, filename))
                     

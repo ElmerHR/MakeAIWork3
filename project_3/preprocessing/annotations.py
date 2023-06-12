@@ -58,7 +58,7 @@ class Annotation():
             else:
                 annotations = 'test'
             # save list to csv file
-            with open(f"annotations_{annotations}.csv", "w", newline="") as f:
+            with open(f"preprocessing/annotations_{annotations}.csv", "w", newline="") as f:
                 writer = csv.writer(f)
                 writer.writerows(csv_list)
         print("Finished creating annotations file...")
