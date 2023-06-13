@@ -43,7 +43,12 @@ class CustomImageDataset(Dataset):
 class Resnet18Model:
     def __init__(self):
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        self.model_ft = models.resnet50(weights='IMAGENET1K_V1')
+        self.classes = ('normal', 'botch', 'rot', 'scab')
+        self.model = models.resnet50(weights='IMAGENET1K_V1')
+        num_ftrs = self.model.fc.in_features
+        # set number of output classes
+        self.model.fc = nn.Linear(num_ftrs, len(self.classes))
+        self.model = self.model.to(device)
         # create temporary dataloader to find mean and std of the images in the train dataset
         self.batch_size = 8
 
@@ -52,7 +57,7 @@ class Resnet18Model:
                 transforms.Resize(128)
             ])
 
-        trainset = CustomImageDataset('preprocessing/annotations_train.csv', 'preprocessing', transform=transform)
+        trainset = CustomImageDataset('preprocessing/annotations_train.csv', '', transform=transform)
         trainloader = DataLoader(trainset, batch_size=self.batch_size,
                                                 shuffle=True, num_workers=0)
         mean, std = get_mean_and_std(trainloader)
@@ -64,37 +69,30 @@ class Resnet18Model:
                 transforms.Normalize(mean, std)
             ])
 
-        trainset = CustomImageDataset('preprocessing/annotations_train.csv', 'preprocessing', transform)
+        trainset = CustomImageDataset('preprocessing/annotations_train.csv', '', transform)
         self.trainloader = DataLoader(trainset, batch_size=self.batch_size,
                                                 shuffle=True)
 
-        testset = CustomImageDataset('preprocessing/annotations_test.csv', 'preprocessing', transform)
+        testset = CustomImageDataset('preprocessing/annotations_test.csv', '', transform)
         self.testloader = DataLoader(testset, batch_size=self.batch_size,
                                                 shuffle=False)
-        print(get_mean_and_std(trainloader))
+        print(get_mean_and_std(self.trainloader))
         # make sure the classes are in the same order as the classes in the csv file
-        self.classes = ('normal', 'botch', 'rot', 'scab')
         self.best_model_params_path = os.path.join('cnn', 'resnet18_best_model_params.pt')
         
 
     def train(self):
 
-        num_ftrs = self.model_ft.fc.in_features
-        # set number of output classes
-        self.model_ft.fc = nn.Linear(num_ftrs, len(self.classes))
-
-        self.model_ft = self.model_ft.to(device)
-
         criterion = nn.CrossEntropyLoss()
 
         # Observe that all parameters are being optimized
-        optimizer_ft = optim.SGD(self.model_ft.parameters(), lr=0.001, momentum=0.9)
+        optimizer_ft = optim.SGD(self.model.parameters(), lr=0.001, momentum=0.9)
 
         # Decay LR by a factor of 0.1 every 2 epochs
         exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=2, gamma=0.03)
 
         # saving training checkpoints
-        torch.save(self.model_ft.state_dict(), self.best_model_params_path)
+        torch.save(self.model.state_dict(), self.best_model_params_path)
         best_acc = 0.0
         train_losses = []
         test_losses = []
@@ -104,7 +102,7 @@ class Resnet18Model:
         for epoch in range(epochs):  # loop over the dataset multiple times
 
             running_loss = 0.0
-            self.model_ft.train()
+            self.model.train()
             for i, data in enumerate(self.trainloader, 0):
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data[0].to(device), data[1].to(device)
@@ -113,7 +111,7 @@ class Resnet18Model:
                 optimizer_ft.zero_grad()
 
                 # forward + backward + optimize
-                outputs = self.model_ft(inputs)
+                outputs = self.model(inputs)
                 loss = criterion(outputs, labels)
                 loss.backward()
                 optimizer_ft.step()
@@ -130,13 +128,13 @@ class Resnet18Model:
             correct = 0
             total = 0
             running_loss = 0.0
-            self.model_ft.eval()
+            self.model.eval()
             # since we're not training, we don't need to calculate the gradients for our outputs
             with torch.no_grad():
                 for data in self.testloader:
                     images, labels = data[0].to(device), data[1].to(device)
                     # calculate outputs by running images through the network
-                    outputs = self.model_ft(images)
+                    outputs = self.model(images)
                     loss = criterion(outputs, labels)
                     running_loss += loss.item()
                     # the class with the highest energy is what we choose as prediction
@@ -152,7 +150,7 @@ class Resnet18Model:
             # deep copy the model
             if epoch_acc > best_acc:
                 best_acc = epoch_acc
-                torch.save(self.model_ft.state_dict(), self.best_model_params_path)
+                torch.save(self.model.state_dict(), self.best_model_params_path)
 
         print('Finished Training')
         fig, (ax1, ax2) = plt.subplots(2, 1)
@@ -171,13 +169,13 @@ class Resnet18Model:
         correct_pred = {classname: 0 for classname in self.classes}
         total_pred = {classname: 0 for classname in self.classes}
         # load best performing model
-        self.model_ft.load_state_dict(torch.load(self.best_model_params_path))
-        self.model_ft.eval()
+        self.model.load_state_dict(torch.load(self.best_model_params_path))
+        self.model.eval()
         # again no gradients needed
         with torch.no_grad():
             for data in self.testloader:
                 images, labels = data[0].to(device), data[1].to(device)
-                outputs = self.model_ft(images)
+                outputs = self.model(images)
                 _, predictions = torch.max(outputs, 1)
                 # collect the correct predictions for each class
                 for label, prediction in zip(labels, predictions):

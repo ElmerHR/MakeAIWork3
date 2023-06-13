@@ -1,12 +1,23 @@
-# Import the library
+# Import the libraries
+import os
 import argparse
 import torch
+from tqdm import tqdm
+from torchvision.io import read_image
+import torchvision.transforms.functional as F
+from torchsummary import summary
 
 from preprocessing.sam import Segmentation
 from preprocessing.augmentation import Augmentation
 from preprocessing.annotations import Annotation
 from cnn.cnn import CNNModel
 from cnn.resnet18 import Resnet18Model
+
+# constants
+NORMALIZE_MEAN = (87.2653, 61.1481, 37.2793)
+NORMALIZE_STD = (92.8159, 72.6130, 49.0646)
+
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 def main():
     # Create the parser
@@ -56,14 +67,17 @@ def main():
     
     if args.aql:
         predictor = None
-        cnn_model_params_path = 'cnn/cnn_best_model_params.pt'
-        resnet18_model_params_path = 'cnn/resnet18_best_model_params.pt'
+        # best model paths
         if args.aql and (args.train_cnn or args.train_resnet18):
             print('Aql after training network')
             if args.train_cnn:
-                predictor = CNNModel().net.load_state_dict(torch.load(cnn_model_params_path))
+                predictor = CNNModel()
+                predictor.model.to(device)
+                predictor.model.load_state_dict(torch.load(predictor.best_model_params_path))
             else:
-                predictor = Resnet18Model().model_ft.load_state_dict(torch.load(resnet18_model_params_path))
+                predictor = Resnet18Model()
+                predictor.model.to(device)
+                predictor.model.load_state_dict(torch.load(predictor.best_model_params_path))
             
         else:
             while True:
@@ -71,20 +85,59 @@ def main():
 
                 if model == 'cnn':
                     print("AQL with cnn")
-                    predictor = CNNModel().net.load_state_dict(torch.load(cnn_model_params_path))
+                    predictor = CNNModel()
+                    predictor.model.to(device)
+                    predictor.model.load_state_dict(torch.load(predictor.best_model_params_path))
                     break
                 elif model == 'resnet18':
                     print("AQL with resnet18")
-                    predictor = Resnet18Model().model_ft.load_state_dict(torch.load(resnet18_model_params_path))
+                    predictor = Resnet18Model()
+                    predictor.model.to(device)
+                    predictor.model.load_state_dict(torch.load(predictor.best_model_params_path))
                     break
                 else:
                     continue
-
-        predictor.eval()
+        
+        # tell torch to run in eval mode
+        predictor.model.eval()
+        # dict to hold predictions
+        predictions = {classname: 0 for classname in predictor.classes}
         # don't calculate gradients
         with torch.no_grad():
-            images = None
-            outputs = predictor(images)
+            for filename in tqdm(os.listdir('sample_apples')):
+                if os.path.splitext(filename)[-1] == '.jpg':
+                    image = read_image(os.path.join('sample_apples', filename)).float()
+                    # removing alpha channel from image (4th channel)
+                    image = image[:3, :, :]
+                    # Resize image to 128 x 128
+                    image = F.resize(image, (128, 128))
+                    # Normalize image
+                    image = F.normalize(image, NORMALIZE_MEAN, NORMALIZE_STD)
+                    # unsqeeze to create batchsize of 1 (prevents flatten error)
+                    image = image.unsqueeze(0)
+                    # make prediction
+                    output = predictor.model(image.to(device))
+                    prediction = torch.argmax(output, dim=1)
+                    predictions[predictor.classes[prediction]] += 1
+        # determine number of bad apples
+        bad_apples = sum(predictions.values()) - predictions['normal']
+        # aql cutoff points (these are the number of acceptable bad apples)
+        aql_class_1 = 0
+        aql_class_2 = 3
+        aql_class_3 = 7
+        aql_class_4 = 8
+
+        # determine the class of the batch of apples
+        if bad_apples >= aql_class_4:
+            print("Deze batch van 500 appels is afgekeurd!")
+        elif bad_apples <= aql_class_1:
+            print("Deze batch van 500 appels ligt binnenkort in de supermarkt of de groenteboer!")
+        elif bad_apples <= aql_class_2:
+            print("Deze batch van 500 appels wordt verwerkt tot appelmoes!")
+        elif bad_apples <= aql_class_3:
+            print("Deze batch van 500 appels wordt verwerkt tot stroop!")
+        
+        print(predictions)
 
 if __name__ == "__main__":
     main()

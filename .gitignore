@@ -11,3 +11,5 @@ project_3/preprocessing/yolov3.weights
 **/bb_david/
 **/renamed_files
 **/segmented_files
+**/sample_apples
+**/resnet18_best_model_params.pt

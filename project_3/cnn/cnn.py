@@ -131,7 +131,8 @@ class AdjustBrightness(object):
 class CNNModel:
     def __init__(self):
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        self.net = Net()
+        self.model = Net()
+        self.model.to(self.device)
         # create temporary dataloader to find mean and std of the images in the train dataset
         self.batch_size = 8
 
@@ -159,14 +160,14 @@ class CNNModel:
         testset = CustomImageDataset('preprocessing/annotations_test.csv', '', transform)
         self.testloader = DataLoader(testset, batch_size=self.batch_size,
                                                 shuffle=False)
-        print(get_mean_and_std(trainloader))
+        print(get_mean_and_std(self.trainloader))
         # make sure the classes are in the same order as the classes in the csv file
         self.classes = ('normal', 'botch', 'rot', 'scab')
         self.best_model_params_path = os.path.join('cnn', 'cnn_best_model_params.pt')
 
     def train(self):
         
-        summary(self.net, (3, 128, 128))
+        summary(self.model, (3, 128, 128))
 
         print("Creating dataset and setting up DataLoader...")
 
@@ -191,18 +192,14 @@ class CNNModel:
         # print labels
         print(' '.join(f'{self.classes[labels[j]]:5s}' for j in range(self.batch_size)))
 
-        
-
-        self.net.to(self.device)
-
         criterion = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(self.net.parameters(), lr=0.0008)
+        optimizer = optim.Adam(self.model.parameters(), lr=0.0008)
         # Decay LR by a factor of 0.1 every 2 epochs
         exp_lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.03)
 
         # saving training checkpoints
         
-        torch.save(self.net.state_dict(), self.best_model_params_path)
+        torch.save(self.model.state_dict(), self.best_model_params_path)
         best_acc = 0.0
 
         print("Training cnn...")
@@ -214,7 +211,7 @@ class CNNModel:
         for epoch in range(epochs):  # loop over the dataset multiple times
 
             running_loss = 0.0
-            self.net.train()
+            self.model.train()
             for i, data in enumerate(self.trainloader, 0):
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data[0].to(self.device), data[1].to(self.device)
@@ -223,7 +220,7 @@ class CNNModel:
                 optimizer.zero_grad()
 
                 # forward + backward + optimize
-                outputs = self.net(inputs)
+                outputs = self.model(inputs)
                 loss = criterion(outputs, labels)
                 loss.backward()
                 optimizer.step()
@@ -239,13 +236,13 @@ class CNNModel:
             correct = 0
             total = 0
             running_loss = 0.0
-            self.net.eval()
+            self.model.eval()
             # since we're not training, we don't need to calculate the gradients for our outputs
             with torch.no_grad():
                 for data in self.testloader:
                     images, labels = data[0].to(self.device), data[1].to(self.device)
                     # calculate outputs by running images through the network
-                    outputs = self.net(images)
+                    outputs = self.model(images)
                     loss = criterion(outputs, labels)
                     running_loss += loss.item()
                     # the class with the highest energy is what we choose as prediction
@@ -262,7 +259,7 @@ class CNNModel:
             # deep copy the model
             if epoch_acc > best_acc:
                 best_acc = epoch_acc
-                torch.save(self.net.state_dict(), self.best_model_params_path)
+                torch.save(self.model.state_dict(), self.best_model_params_path)
 
         print('Finished Training')
         fig, (ax1, ax2) = plt.subplots(2, 1)
@@ -281,13 +278,13 @@ class CNNModel:
         correct_pred = {classname: 0 for classname in self.classes}
         total_pred = {classname: 0 for classname in self.classes}
         # load best performing model
-        self.net.load_state_dict(torch.load(self.best_model_params_path))
-        self.net.eval()
+        self.model.load_state_dict(torch.load(self.best_model_params_path))
+        self.model.eval()
         # again no gradients needed
         with torch.no_grad():
             for data in self.testloader:
                 images, labels = data[0].to(self.device), data[1].to(self.device)
-                outputs = self.net(images)
+                outputs = self.model(images)
                 _, predictions = torch.max(outputs, 1)
                 # collect the correct predictions for each class
                 for label, prediction in zip(labels, predictions):
