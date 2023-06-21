@@ -9,8 +9,8 @@ class Annotation():
 
     def annotate(self):
         # path with segmented images
-        path_train = 'preprocessing/segmented_files/train'
-        path_test = 'preprocessing/segmented_files/test'
+        path_train = 'preprocessing/segmented_files/train/noise'
+        path_test = 'preprocessing/segmented_files/test/noise'
 
         # list of paths to iterate over
         paths = [path_train, path_test]
@@ -28,7 +28,7 @@ class Annotation():
         # iterate over all images in both paths
         for i, path in enumerate(paths):
             for filename in tqdm(os.listdir(path)):
-                if os.path.splitext(filename)[-1] == '.jpg':
+                if os.path.splitext(filename)[-1] == '.png':
                     # get label name from filename
                     label = filename.split('_', 1)[0]
                     # find label idx belonging to label text

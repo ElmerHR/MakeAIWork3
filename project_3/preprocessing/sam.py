@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 import matplotlib.pyplot as plt
 import cv2
 import sys
+from random import randint
 
 from segment_anything import sam_model_registry, SamPredictor
 from PIL import Image
@@ -163,11 +164,20 @@ class Segmentation:
                     img_crop_sq = cv2.copyMakeBorder(img_crop, top, bottom, left, right, cv2.BORDER_CONSTANT,
                         value=color)
 
+                    data = np.array(img_crop_sq)   # "data" is a height x width x 4 numpy array
+                    red, green, blue = data.T # Temporarily unpack the bands for readability
+
+                    # Replace black with random noise
+                    black_areas = (red == 0) & (blue == 0) & (green == 0)
+                    shape = data[...][black_areas.T].shape
+                    print(shape)
+                    Z = np.random.rand(shape[0], shape[1]) * 255
+                    data[...][black_areas.T] = Z
+                    # img_crop_noise = Image.fromarray(data)
                     # cv2.imshow("image", img_crop_sq)
                     # cv2.waitKey(0)
                     # cv2.destroyAllWindows()
 
                     # save image to file
-                    cv2.imwrite(os.path.join(segmented_paths[i], image_filename), img_crop_sq)
-                    print("Finalized segmentation of images...")
-                    return None
+                    cv2.imwrite(os.path.join(segmented_paths[i], 'noise', image_filename[:-4]+'.png'), data)
+        print("Finalized segmentation of images...")

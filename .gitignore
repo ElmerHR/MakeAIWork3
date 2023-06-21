@@ -13,3 +13,4 @@ project_3/preprocessing/yolov3.weights
 **/segmented_files
 **/sample_apples
 **/resnet18_best_model_params.pt
+project_3/app/sam_vit_b_01ec64.pth

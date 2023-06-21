@@ -3,6 +3,9 @@ import os
 import argparse
 import torch
 from tqdm import tqdm
+import numpy as np
+import cv2
+from PIL import Image
 from torchvision.io import read_image
 import torchvision.transforms.functional as F
 from torchsummary import summary
@@ -52,11 +55,15 @@ def main():
         annotation.annotate()
     
     if args.train_cnn:
-        print('Training CNN model...')
+        lr_list = [0.001, 0.0005, 0.0001, 0.00008]
+
         cnn_model = CNNModel()
-        cnn_model.train()
-        print('Testing CNN model...')
-        cnn_model.test()
+        for lr in lr_list:
+            print(f'Training CNN model...\nlr: {lr}')
+            cnn_model.train(2, lr)
+            print('Testing CNN model...')
+            cnn_model.test()
+        
     
     if args.train_resnet18:
         print('Training Resnet18 model...')
@@ -71,7 +78,7 @@ def main():
         if args.aql and (args.train_cnn or args.train_resnet18):
             print('Aql after training network')
             if args.train_cnn:
-                predictor = CNNModel()
+                predictor = CNNModel(load_dataset=False)
                 predictor.model.to(device)
                 predictor.model.load_state_dict(torch.load(predictor.best_model_params_path))
             else:
@@ -85,7 +92,7 @@ def main():
 
                 if model == 'cnn':
                     print("AQL with cnn")
-                    predictor = CNNModel()
+                    predictor = CNNModel(load_dataset=False)
                     predictor.model.to(device)
                     predictor.model.load_state_dict(torch.load(predictor.best_model_params_path))
                     break
@@ -102,9 +109,10 @@ def main():
         predictor.model.eval()
         # dict to hold predictions
         predictions = {classname: 0 for classname in predictor.classes}
+        
         # don't calculate gradients
         with torch.no_grad():
-            for filename in tqdm(os.listdir('sample_apples')):
+            for i, filename in enumerate(os.listdir('sample_apples')):
                 if os.path.splitext(filename)[-1] == '.jpg':
                     image = read_image(os.path.join('sample_apples', filename)).float()
                     # removing alpha channel from image (4th channel)
@@ -119,6 +127,7 @@ def main():
                     output = predictor.model(image.to(device))
                     prediction = torch.argmax(output, dim=1)
                     predictions[predictor.classes[prediction]] += 1
+        
         # determine number of bad apples
         bad_apples = sum(predictions.values()) - predictions['normal']
         # aql cutoff points (these are the number of acceptable bad apples)
@@ -138,6 +147,7 @@ def main():
             print("Deze batch van 500 appels wordt verwerkt tot stroop!")
         
         print(predictions)
-
+       
+    
 if __name__ == "__main__":
     main()
