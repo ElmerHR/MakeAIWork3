@@ -1,20 +1,20 @@
 # Import the libraries
 import os
+import warnings
 import argparse
 import torch
-from tqdm import tqdm
-import numpy as np
-import cv2
-from PIL import Image
+
 from torchvision.io import read_image
 import torchvision.transforms.functional as F
-from torchsummary import summary
+from sentence_transformers import SentenceTransformer, util
 
 from preprocessing.sam import Segmentation
 from preprocessing.augmentation import Augmentation
 from preprocessing.annotations import Annotation
 from cnn.cnn import CNNModel
 from cnn.resnet18 import Resnet18Model
+
+warnings.filterwarnings("ignore")
 
 # constants
 NORMALIZE_MEAN = (87.2653, 61.1481, 37.2793)
@@ -138,15 +138,32 @@ def main():
 
         # determine the class of the batch of apples
         if bad_apples >= aql_class_4:
-            print("Deze batch van 500 appels is afgekeurd!")
+            approved = False
+            response = "Deze batch van 500 appels is afgekeurd!"
+            intended_use = ""
         elif bad_apples <= aql_class_1:
-            print("Deze batch van 500 appels ligt binnenkort in de supermarkt of de groenteboer!")
+            approved = True
+            intended_use = " to supermarkets"
         elif bad_apples <= aql_class_2:
-            print("Deze batch van 500 appels wordt verwerkt tot appelmoes!")
+            approved = True
+            intended_use = " to apple sauce manufacturers"
         elif bad_apples <= aql_class_3:
-            print("Deze batch van 500 appels wordt verwerkt tot stroop!")
+            approved = True
+            intended_use = " to apple syrup manufacturers"
         
-        print(predictions)
+        model = SentenceTransformer('all-MiniLM-L12-v2')
+
+        embeddings = [
+                        f"This batch is {'not' if not approved else ''} approved with {'only' if not approved else ''} {20-bad_apples} healthy apples",
+                        f"The result of the inspection is that the batch of apples is {'not ' if approved else ''}rejected with {'only ' if approved else ''}{bad_apples} bad apples",
+                        f"These apples will {'not ' if not approved else ''}be sold{intended_use}."
+                    ]
+        print(embeddings)
+        query_embedding = model.encode(input('Ask a question about the batch of apples?\n'))
+        passage_embedding = model.encode(embeddings)
+
+        answer = util.dot_score(query_embedding, passage_embedding)
+        print(embeddings[answer.argmax()])
        
     
 if __name__ == "__main__":

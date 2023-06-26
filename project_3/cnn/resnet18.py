@@ -86,10 +86,10 @@ class Resnet18Model:
         criterion = nn.CrossEntropyLoss()
 
         # Observe that all parameters are being optimized
-        optimizer_ft = optim.SGD(self.model.parameters(), lr=0.001, momentum=0.9)
+        optimizer_ft = optim.Adam(self.model.parameters(), lr=0.0001)
 
         # Decay LR by a factor of 0.1 every 2 epochs
-        exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=2, gamma=0.03)
+        exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=2, gamma=0.02)
 
         # saving training checkpoints
         torch.save(self.model.state_dict(), self.best_model_params_path)
